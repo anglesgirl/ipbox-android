@@ -1,0 +1,11 @@
+# Flutter
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+
+# 通用
+*.log
+.DS_Store
