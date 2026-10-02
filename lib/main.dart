@@ -48,7 +48,7 @@ class NetBoxApp extends StatelessWidget {
             textStyle: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
-        tabBarTheme: const TabBarTheme(
+        tabBarTheme: const TabBarThemeData(
           labelColor: kAccent,
           unselectedLabelColor: kDim,
           indicatorColor: kAccent,
