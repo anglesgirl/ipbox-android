@@ -88,6 +88,7 @@ class HomePage extends StatelessWidget {
               Tab(text: '路由追踪'),
               Tab(text: '端口扫描'),
               Tab(text: 'DoH解析'),
+              Tab(text: '批量探测'),
             ],
           ),
         ),
@@ -99,6 +100,7 @@ class HomePage extends StatelessWidget {
             TracePage(),
             PortScanPage(),
             DohPage(),
+            SweepPage(),
           ],
         ),
       ),
@@ -753,6 +755,122 @@ Widget build(BuildContext context) {
             child: Text(_summary!, style: const TextStyle(color: kAccent, fontSize: 13)),
           ),
         if (_rows != null) ResultTable(headers: ['类型', 'TTL', '记录数据'], rows: _rows!),
+      ],
+    );
+  }
+}
+
+// ============================================================
+// 页7：批量存活探测
+// ============================================================
+class SweepPage extends StatefulWidget {
+  const SweepPage({super.key});
+  @override
+  State<SweepPage> createState() => _SweepPageState();
+}
+
+class _SweepPageState extends State<SweepPage> with AutomaticKeepAliveClientMixin {
+  final _ips = TextEditingController();
+  List<List<String>>? _rows;
+  bool _busy = false;
+  int _alive = 0;
+
+  Future<String> _probe(String ip, int port) async {
+    try {
+      final sw = Stopwatch()..start();
+      final sock = await Socket.connect(ip, port, timeout: const Duration(seconds: 4));
+      sock.destroy();
+      return '${sw.elapsedMilliseconds}ms';
+    } catch (_) {
+      return '✗';
+    }
+  }
+
+  Future<void> _go() async {
+    final lines = _ips.text
+        .trim()
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    if (lines.isEmpty) return;
+    setState(() {
+      _busy = true;
+      _rows = null;
+      _alive = 0;
+    });
+    final results = <List<String>>[];
+    var alive = 0;
+    await Future.wait(lines.map((line) async {
+      final parts = line.split(RegExp(r'\s+'));
+      final ip = parts.first;
+      final note = parts.length > 1 ? parts[1] : '';
+      final r443 = await _probe(ip, 443);
+      final r80 = await _probe(ip, 80);
+      final ok443 = r443 != '✗';
+      final ok80 = r80 != '✗';
+      if (ok443 || ok80) alive++;
+      final delay = ok443 ? r443 : (ok80 ? r80 : '-');
+      results.add([ip, note, ok443 ? '443 通' : '443 ✗', ok80 ? '80 通' : '80 ✗', delay]);
+    }));
+    results.sort((a, b) => a[0].compareTo(b[0]));
+    if (mounted) setState(() {
+      _rows = results;
+      _alive = alive;
+      _busy = false;
+    });
+  }
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return ListView(
+      children: [
+        CardBox(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('批量 IP 存活探测', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('每行一个 IP，可加备注，如: 104.244.43.131 美国节点', style: TextStyle(fontSize: 12, color: kDim)),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _ips,
+                maxLines: 8,
+                style: const TextStyle(fontSize: 13),
+                decoration: const InputDecoration(
+                  hintText: '1.2.3.4\n5.6.7.8 备注',
+                  filled: true,
+                  fillColor: Color(0xFF0B1220),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: _busy ? null : _go,
+                    child: Text(_busy ? '扫描中…' : '开始扫描'),
+                  ),
+                  const SizedBox(width: 12),
+                  if (_rows != null)
+                    Text('存活 $_alive/${_rows!.length}', style: const TextStyle(color: kGood)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (_rows != null)
+          ResultTable(
+            headers: ['IP', '备注', '443', '80', '延迟'],
+            rows: [for (final r in _rows!) [r[0], r[1], r[2], r[3], r[4]]],
+            rowColors: [
+              for (final r in _rows!)
+                (r[2] == '443 通' || r[3] == '80 通') ? kGood : kBad,
+            ],
+          ),
       ],
     );
   }
