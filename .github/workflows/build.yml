@@ -16,13 +16,10 @@ jobs:
           channel: stable
           cache: true
 
-      - name: 生成 Android 骨架
+      - name: 生成 Android 骨架（保留仓库预置 Manifest）
         run: |
           flutter create --platforms=android --org com.anglesgirl --project-name netbox .
-          # 注入网络权限 + 明文 HTTP + 中文应用名
-          sed -i 's|</manifest>|    <uses-permission android:name="android.permission.INTERNET" />\n</manifest>|' android/app/src/main/AndroidManifest.xml
-          sed -i 's|android:label="netbox"|android:label="网络工具箱" android:usesCleartextTraffic="true"|' android/app/src/main/AndroidManifest.xml
-          grep -E "uses-permission|usesCleartextTraffic|label" android/app/src/main/AndroidManifest.xml
+          grep -E "uses-permission|usesCleartextTraffic|label|MainActivity" android/app/src/main/AndroidManifest.xml
 
       - name: 依赖
         run: flutter pub get

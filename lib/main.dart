@@ -182,7 +182,7 @@ class MyIpPage extends StatefulWidget {
   State<MyIpPage> createState() => _MyIpPageState();
 }
 
-class _MyIpPageState extends State<MyIpPage> {
+class _MyIpPageState extends State<MyIpPage> with AutomaticKeepAliveClientMixin {
   Future<List<Map<String, String>>>? _future;
 
   @override
@@ -250,10 +250,32 @@ class _MyIpPageState extends State<MyIpPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+    @override
+  bool get wantKeepAlive => true;
+
+Widget build(BuildContext context) {
+    super.build(context);
     return FutureBuilder<List<Map<String, String>>>(
       future: _future,
       builder: (context, snap) {
+        if (snap.hasError) {
+          return ListView(
+            children: [
+              CardBox(
+                child: Text(
+                  '加载失败: ${snap.error}',
+                  style: const TextStyle(color: kBad, fontSize: 13),
+                ),
+              ),
+              CardBox(
+                child: ElevatedButton(
+                  onPressed: () => setState(() => _future = _load()),
+                  child: const Text('重试'),
+                ),
+              ),
+            ],
+          );
+        }
         if (snap.connectionState != ConnectionState.done) {
           return const Center(child: CircularProgressIndicator(color: kAccent));
         }
@@ -293,7 +315,7 @@ class IpLookupPage extends StatefulWidget {
   State<IpLookupPage> createState() => _IpLookupPageState();
 }
 
-class _IpLookupPageState extends State<IpLookupPage> {
+class _IpLookupPageState extends State<IpLookupPage> with AutomaticKeepAliveClientMixin {
   final _ctrl = TextEditingController(text: '8.8.8.8\n1.1.1.1\n223.5.5.5');
   List<List<String>>? _rows;
   bool _busy = false;
@@ -342,7 +364,11 @@ class _IpLookupPageState extends State<IpLookupPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+    @override
+  bool get wantKeepAlive => true;
+
+Widget build(BuildContext context) {
+    super.build(context);
     return ListView(
       children: [
         CardBox(
@@ -380,7 +406,7 @@ class PingPage extends StatefulWidget {
   State<PingPage> createState() => _PingPageState();
 }
 
-class _PingPageState extends State<PingPage> {
+class _PingPageState extends State<PingPage> with AutomaticKeepAliveClientMixin {
   final _host = TextEditingController(text: '1.1.1.1');
   String _out = '';
   bool _busy = false;
@@ -406,7 +432,11 @@ class _PingPageState extends State<PingPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+    @override
+  bool get wantKeepAlive => true;
+
+Widget build(BuildContext context) {
+    super.build(context);
     return ListView(
       children: [
         CardBox(
@@ -444,7 +474,7 @@ class TracePage extends StatefulWidget {
   State<TracePage> createState() => _TracePageState();
 }
 
-class _TracePageState extends State<TracePage> {
+class _TracePageState extends State<TracePage> with AutomaticKeepAliveClientMixin {
   final _host = TextEditingController(text: 'archiveofourown.org');
   List<List<String>>? _rows;
   bool _busy = false;
@@ -493,7 +523,11 @@ class _TracePageState extends State<TracePage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+    @override
+  bool get wantKeepAlive => true;
+
+Widget build(BuildContext context) {
+    super.build(context);
     return ListView(
       children: [
         CardBox(
@@ -535,7 +569,7 @@ class PortScanPage extends StatefulWidget {
   State<PortScanPage> createState() => _PortScanPageState();
 }
 
-class _PortScanPageState extends State<PortScanPage> {
+class _PortScanPageState extends State<PortScanPage> with AutomaticKeepAliveClientMixin {
   final _host = TextEditingController(text: '1.1.1.1');
   final _ports = TextEditingController(text: '22,53,80,443,8080,8443,3306,3389');
   List<List<String>>? _rows;
@@ -580,7 +614,11 @@ class _PortScanPageState extends State<PortScanPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+    @override
+  bool get wantKeepAlive => true;
+
+Widget build(BuildContext context) {
+    super.build(context);
     return ListView(
       children: [
         CardBox(
@@ -625,7 +663,7 @@ class DohPage extends StatefulWidget {
   State<DohPage> createState() => _DohPageState();
 }
 
-class _DohPageState extends State<DohPage> {
+class _DohPageState extends State<DohPage> with AutomaticKeepAliveClientMixin {
   final _name = TextEditingController(text: 'archiveofourown.org');
   final _doh = TextEditingController(text: 'https://1.12.12.12/dns-query');
   String _type = 'A';
@@ -672,7 +710,11 @@ class _DohPageState extends State<DohPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+    @override
+  bool get wantKeepAlive => true;
+
+Widget build(BuildContext context) {
+    super.build(context);
     return ListView(
       children: [
         CardBox(
