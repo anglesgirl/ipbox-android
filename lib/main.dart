@@ -190,9 +190,9 @@ class _MyIpPageState extends State<MyIpPage> {
 
   Future<List<Map<String, String>>> _load() async {
     final out = <Map<String, String>>[];
-    Future<void> add(String name, Future<Map<String, String>> f) async {
+    Future<void> add(String name, Future<Map<String, String>> Function() f) async {
       try {
-        out.add(await f);
+        out.add(await f());
       } catch (e) {
         out.add({'源': name, 'IP': '失败', '归属': e.toString().substring(0, 60)});
       }
@@ -388,8 +388,8 @@ class _PingPageState extends State<PingPage> {
       _out = '';
     });
     try {
-      final proc = await Process.run('ping', ['-c', '4', '-W', '5', _host.text.trim()],
-          timeout: const Duration(seconds: 25));
+      final proc = await Process.run('ping', ['-c', '4', '-W', '5', _host.text.trim()])
+          .timeout(const Duration(seconds: 25));
       setState(() {
         _out = '${proc.stdout}\n${proc.stderr}';
         _busy = false;
