@@ -775,10 +775,23 @@ class _SweepPageState extends State<SweepPage> with AutomaticKeepAliveClientMixi
   bool _busy = false;
   int _alive = 0;
 
-  Future<String> _probe(String ip, int port) async {
+  Future<String> _probeTcp(String ip, int port) async {
     try {
       final sw = Stopwatch()..start();
       final sock = await Socket.connect(ip, port, timeout: const Duration(seconds: 4));
+      sock.destroy();
+      return '${sw.elapsedMilliseconds}ms';
+    } catch (_) {
+      return '✗';
+    }
+  }
+
+  // TLS 握手探测: TCP 通但 ClientHello 被 RST 时这里会失败
+  Future<String> _probeTls(String ip) async {
+    try {
+      final sw = Stopwatch()..start();
+      final sock = await SecureSocket.connect(ip, 443,
+          onBadCertificate: (_) => true, timeout: const Duration(seconds: 4));
       sock.destroy();
       return '${sw.elapsedMilliseconds}ms';
     } catch (_) {
@@ -805,13 +818,20 @@ class _SweepPageState extends State<SweepPage> with AutomaticKeepAliveClientMixi
       final parts = line.split(RegExp(r'\s+'));
       final ip = parts.first;
       final note = parts.length > 1 ? parts[1] : '';
-      final r443 = await _probe(ip, 443);
-      final r80 = await _probe(ip, 80);
+      final r443 = await _probeTls(ip);       // 443: TLS 握手
+      final r443t = await _probeTcp(ip, 443); // 443 纯 TCP 对照
+      final r80 = await _probeTcp(ip, 80);
       final ok443 = r443 != '✗';
       final ok80 = r80 != '✗';
       if (ok443 || ok80) alive++;
       final delay = ok443 ? r443 : (ok80 ? r80 : '-');
-      results.add([ip, note, ok443 ? '443 通' : '443 ✗', ok80 ? '80 通' : '80 ✗', delay]);
+      results.add([
+        ip, note,
+        ok443 ? 'TLS 通' : 'TLS ✗',
+        r443t != '✗' ? 'TCP 通' : 'TCP ✗',
+        ok80 ? '80 通' : '80 ✗',
+        delay,
+      ]);
     }));
     results.sort((a, b) => a[0].compareTo(b[0]));
     if (mounted) setState(() {
@@ -864,11 +884,13 @@ class _SweepPageState extends State<SweepPage> with AutomaticKeepAliveClientMixi
         ),
         if (_rows != null)
           ResultTable(
-            headers: ['IP', '备注', '443', '80', '延迟'],
-            rows: [for (final r in _rows!) [r[0], r[1], r[2], r[3], r[4]]],
+            headers: ['IP', '备注', '443-TLS', '443-TCP', '80', '延迟'],
+            rows: [
+              for (final r in _rows!) [r[0], r[1], r[2], r[3], r[4], r[5]],
+            ],
             rowColors: [
               for (final r in _rows!)
-                (r[2] == '443 通' || r[3] == '80 通') ? kGood : kBad,
+                (r[2] == 'TLS 通' || r[4] == '80 通') ? kGood : kBad,
             ],
           ),
       ],
