@@ -114,10 +114,13 @@ Future<Map<String, dynamic>> httpJson(String url,
   final uri = Uri.parse(url);
   http.Response resp;
   if (method == 'POST' && body != null) {
-    resp = await http.post(uri,
-        headers: {'Content-Type': 'application/json'}, body: jsonEncode(body), timeout: timeout);
+    resp = await http
+        .post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body))
+        .timeout(timeout);
   } else {
-    resp = await http.get(uri, headers: const {'User-Agent': 'NetBox/1.0'}, timeout: timeout);
+    resp = await http
+        .get(uri, headers: const {'User-Agent': 'NetBox/1.0'})
+        .timeout(timeout);
   }
   return jsonDecode(resp.body) as Map<String, dynamic>;
 }
