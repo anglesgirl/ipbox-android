@@ -18,42 +18,92 @@ void main() => runApp(const NetBoxApp());
 class NetBoxApp extends StatelessWidget {
   const NetBoxApp({super.key});
 
+  ThemeData _darkTheme() {
+    return ThemeData(
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: kBg,
+      colorScheme: ColorScheme.dark(
+        primary: kAccent,
+        surface: kCard,
+        onSurface: kText,
+      ),
+      appBarTheme: const AppBarTheme(backgroundColor: kBg, elevation: 0),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF0B1220),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+        hintStyle: const TextStyle(color: kDim),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: kAccent,
+          foregroundColor: const Color(0xFF0B1220),
+          textStyle: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+      tabBarTheme: const TabBarThemeData(
+        labelColor: kAccent,
+        unselectedLabelColor: kDim,
+        indicatorColor: kAccent,
+      ),
+      cardTheme: const CardThemeData(color: kCard),
+      textTheme: const TextTheme(
+        bodyMedium: TextStyle(color: kText),
+        bodySmall: TextStyle(color: kDim),
+      ),
+    );
+  }
+
+  ThemeData _lightTheme() {
+    return ThemeData(
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: const Color(0xFFF1F5F9),
+      colorScheme: ColorScheme.light(
+        primary: const Color(0xFF0891B2),
+        surface: Colors.white,
+        onSurface: const Color(0xFF0F172A),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFF1F5F9),
+        foregroundColor: Color(0xFF0F172A),
+        elevation: 0,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+        hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF0891B2),
+          foregroundColor: Colors.white,
+          textStyle: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+      tabBarTheme: const TabBarThemeData(
+        labelColor: Color(0xFF0891B2),
+        unselectedLabelColor: Color(0xFF94A3B8),
+        indicatorColor: Color(0xFF0891B2),
+      ),
+      cardTheme: const CardThemeData(color: Colors.white),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '网络工具箱',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: kBg,
-        colorScheme: ColorScheme.dark(
-          primary: kAccent,
-          surface: kCard,
-          onSurface: kText,
-        ),
-        appBarTheme: const AppBarTheme(backgroundColor: kBg, elevation: 0),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFF0B1220),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
-          ),
-          hintStyle: const TextStyle(color: kDim),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: kAccent,
-            foregroundColor: const Color(0xFF0B1220),
-            textStyle: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-        tabBarTheme: const TabBarThemeData(
-          labelColor: kAccent,
-          unselectedLabelColor: kDim,
-          indicatorColor: kAccent,
-        ),
-      ),
+      theme: _lightTheme(),
+      darkTheme: _darkTheme(),
+      themeMode: ThemeMode.system,
       home: const HomePage(),
     );
   }
@@ -65,7 +115,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 6,
+      length: 7,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('网络工具箱'),
@@ -138,7 +188,7 @@ class CardBox extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       padding: padding,
       decoration: BoxDecoration(
-        color: kCard,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: child,
@@ -159,7 +209,11 @@ class ResultTable extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          headingRowColor: WidgetStatePropertyAll(const Color(0xFF1E293B)),
+          headingRowColor: WidgetStatePropertyAll(
+            Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF1E293B)
+                : const Color(0xFFE2E8F0),
+          ),
           columnSpacing: 22,
           columns: [for (final h in headers) DataColumn(label: Text(h, style: const TextStyle(fontWeight: FontWeight.bold)))],
           rows: [
@@ -201,6 +255,29 @@ class _MyIpPageState extends State<MyIpPage> with AutomaticKeepAliveClientMixin 
       } catch (e) {
         out.add({'源': name, 'IP': '失败', '归属': e.toString().substring(0, 60)});
       }
+    }
+
+    // 本机网卡 IP（不依赖外部服务）
+    try {
+      final ifs = await NetworkInterface.list(
+        includeLoopback: false,
+        type: InternetAddressType.any,
+      );
+      for (final nic in ifs) {
+        for (final addr in nic.addresses) {
+          // 跳过 link-local
+          if (addr.address.startsWith('169.254.') ||
+              addr.address.startsWith('fe80:')) continue;
+          out.add({
+            '源': '本机 (${nic.name})',
+            'IP': addr.address,
+            '归属': addr.type == InternetAddressType.IPv4 ? 'IPv4 内网' : 'IPv6',
+            'ISP': '本机网卡',
+          });
+        }
+      }
+    } catch (e) {
+      out.add({'源': '本机', 'IP': '失败', '归属': e.toString().substring(0, 60)});
     }
 
     await Future.wait([
@@ -418,16 +495,48 @@ class _PingPageState extends State<PingPage> with AutomaticKeepAliveClientMixin 
       _busy = true;
       _out = '';
     });
+    final target = _host.text.trim();
+    // 先尝试系统 ping
     try {
-      final proc = await Process.run('ping', ['-c', '4', '-W', '5', _host.text.trim()])
+      final proc = await Process.run('ping', ['-c', '4', '-W', '5', target])
           .timeout(const Duration(seconds: 25));
+      final output = '${proc.stdout}\n${proc.stderr}'.trim();
+      // ping 二进制不存在或执行失败时走 TCP 回退
+      if (proc.exitCode == 0 && output.isNotEmpty && !output.contains('not found')) {
+        setState(() {
+          _out = output;
+          _busy = false;
+        });
+        return;
+      }
+    } catch (_) {
+      // 忽略，走 TCP 回退
+    }
+    // TCP 回退：测 80/443 端口连通性 + 耗时（无需 ping 二进制）
+    try {
+      final buf = StringBuffer('系统 ping 不可用，改用 TCP 探测:\n\n');
+      for (final port in [80, 443]) {
+        final sw = Stopwatch()..start();
+        try {
+          final sock = await Socket.connect(target, port,
+              timeout: const Duration(seconds: 5));
+          sw.stop();
+          buf.writeln('TCP $target:$port 通 (${sw.elapsedMilliseconds}ms)');
+          sock.destroy();
+        } catch (e) {
+          sw.stop();
+          buf.writeln('TCP $target:$port 不通 (${sw.elapsedMilliseconds}ms): $e');
+        }
+      }
+      // 再测 ICMP 可达性（Dart 层）
+      buf.writeln('\n提示：如需真实 ICMP ping，请在有 root 的设备上使用。');
       setState(() {
-        _out = '${proc.stdout}\n${proc.stderr}';
+        _out = buf.toString();
         _busy = false;
       });
     } catch (e) {
       setState(() {
-        _out = 'ping 执行失败: $e\n（部分设备需授予应用「网络」权限）';
+        _out = '探测失败: $e';
         _busy = false;
       });
     }
