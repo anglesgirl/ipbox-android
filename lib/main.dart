@@ -204,25 +204,39 @@ class ResultTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? kText : const Color(0xFF0F172A);
+    final headingBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
     return CardBox(
       padding: EdgeInsets.zero,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowColor: WidgetStatePropertyAll(
-            Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF1E293B)
-                : const Color(0xFFE2E8F0),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: MediaQuery.of(context).size.width - 24,
           ),
-          columnSpacing: 22,
-          columns: [for (final h in headers) DataColumn(label: Text(h, style: const TextStyle(fontWeight: FontWeight.bold)))],
-          rows: [
-            for (var i = 0; i < rows.length; i++)
-              DataRow(
-                color: rowColors != null ? WidgetStatePropertyAll(rowColors![i % rowColors!.length]) : null,
-                cells: [for (final c in rows[i]) DataCell(Text(c, style: const TextStyle(fontSize: 13)))],
-              ),
-          ],
+          child: DataTable(
+            headingRowColor: WidgetStatePropertyAll(headingBg),
+            dataRowColor: WidgetStatePropertyAll(
+              isDark ? Colors.transparent : Colors.transparent,
+            ),
+            headingTextStyle: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+            dataTextStyle: TextStyle(fontSize: 13, color: textColor),
+            columnSpacing: 22,
+            columns: [for (final h in headers) DataColumn(label: Text(h))],
+            rows: [
+              for (var i = 0; i < rows.length; i++)
+                DataRow(
+                  color: rowColors != null
+                      ? WidgetStatePropertyAll(rowColors![i % rowColors!.length].withOpacity(isDark ? 1.0 : 0.15))
+                      : null,
+                  cells: [for (final c in rows[i]) DataCell(Text(c))],
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -601,24 +615,22 @@ class _TracePageState extends State<TracePage> with AutomaticKeepAliveClientMixi
       final d = await httpJson('https://1.12.12.12/dns-query?name=$host&type=1',
           timeout: const Duration(seconds: 8));
       final answers = (d['Answer'] as List?) ?? [];
-      final rows = <List<String>>[
-        ['DNS', '1.12.12.12 (DNSPod)', 'A 记录解析结果'],
-      ];
+      final rows = <List<String>>[];
       for (final a in answers) {
         final m = a as Map<String, dynamic>;
-        rows.add(['A', m['TTL'].toString(), m['data'].toString()]);
+        rows.add(['A', m['TTL'].toString(), m['data'].toString(), '查询中…']);
       }
       // 每个 IP 查归属
-      for (final r in rows.skip(1)) {
+      for (final r in rows) {
         final ip = r[2];
         try {
           final g = await httpJson('http://ip-api.com/json/$ip?lang=zh-CN&fields=country,regionName,city,isp');
-          r.add('${g['country']} ${g['regionName']} ${g['city']} · ${g['isp']}');
+          r[3] = '${g['country']} ${g['regionName']} ${g['city']} · ${g['isp']}';
         } catch (_) {
-          r.add('归属查询失败');
+          r[3] = '归属查询失败';
         }
       }
-      if (rows.length == 1) rows.add(['提示', '', '无 A 记录或查询失败']);
+      if (rows.isEmpty) rows.add(['提示', '-', '-', '无 A 记录或查询失败']);
       setState(() {
         _rows = rows;
         _busy = false;
